@@ -1,7 +1,7 @@
-import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jhentai/src/config/ui_config.dart';
+import 'package:jhentai/src/model/gallery_image.dart';
 import 'package:jhentai/src/model/gallery_url.dart';
 import 'package:jhentai/src/model/tab_record.dart';
 import 'package:jhentai/src/pages/details/details_page_logic.dart';
@@ -9,6 +9,7 @@ import 'package:jhentai/src/routes/routes.dart';
 import 'package:jhentai/src/service/tab_manager_service.dart';
 import 'package:jhentai/src/utils/route_util.dart';
 import 'package:jhentai/src/utils/search_util.dart';
+import 'package:jhentai/src/widget/eh_image.dart';
 
 /// A right-side drawer that lists all persisted browser-style tabs.
 /// Tap a tab to open its underlying route (cold-load if it was suspended);
@@ -147,20 +148,12 @@ class _TabTile extends StatelessWidget {
     if (record.kind == TabKind.gallery && record.coverUrl != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: SizedBox(
-          width: 40,
-          height: 56,
-          child: ExtendedImage.network(
-            record.coverUrl!,
-            fit: BoxFit.cover,
-            cache: true,
-            loadStateChanged: (state) {
-              if (state.extendedImageLoadState != LoadState.completed) {
-                return Container(color: UIConfig.galleryCardBackGroundColor(context));
-              }
-              return null;
-            },
-          ),
+        child: EHImage(
+          galleryImage: GalleryImage(url: record.coverUrl!),
+          containerColor: UIConfig.galleryCardBackGroundColor(context),
+          containerHeight: 56,
+          containerWidth: 40,
+          fit: BoxFit.cover,
         ),
       );
     }
