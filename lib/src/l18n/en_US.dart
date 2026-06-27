@@ -100,6 +100,9 @@ class en_US {
       'clearAllTabs': 'Close all tabs',
       'tabClosed': 'Tab closed',
 
+      /// details page
+      'related': 'Related',
+
       /// gallery page
       'getGallerysFailed': "Get Gallerys Failed",
       'refreshGalleryFailed': 'Refresh Gallery Failed',

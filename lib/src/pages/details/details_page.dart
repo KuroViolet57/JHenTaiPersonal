@@ -225,6 +225,7 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
             buildCopyRightRemovedHint(),
             buildLoadingDetailsIndicator(),
             buildTags(),
+            buildRelated(context),
             if (preferenceSetting.showComments.isTrue) buildComments(),
             buildThumbnails(),
             buildLoadingThumbnailIndicator(context),
@@ -1372,6 +1373,127 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
             ],
           ).fadeIn().marginSymmetric(horizontal: UIConfig.detailPagePadding);
         },
+      ),
+    );
+  }
+
+  Widget buildRelated(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: GetBuilder<DetailsPageLogic>(
+        id: DetailsPageLogic.relatedId,
+        global: false,
+        init: logic,
+        builder: (_) {
+          if (state.relatedLoadingState == LoadingState.idle) {
+            return const SizedBox();
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: UIConfig.detailPagePadding).copyWith(top: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('related'.tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(width: 8),
+                    if (state.relatedKeyword != null)
+                      Expanded(
+                        child: Text(
+                          state.relatedKeyword!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: UIConfig.galleryCardTextColor(context)),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _buildRelatedBody(context),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRelatedBody(BuildContext context) {
+    switch (state.relatedLoadingState) {
+      case LoadingState.loading:
+        return SizedBox(
+          height: 180,
+          child: Center(child: UIConfig.loadingAnimation(context)),
+        );
+      case LoadingState.error:
+        return SizedBox(
+          height: 60,
+          child: Center(
+            child: TextButton(
+              onPressed: logic.loadRelated,
+              child: Text('refresh'.tr),
+            ),
+          ),
+        );
+      case LoadingState.noData:
+      case LoadingState.noMore:
+        return SizedBox(
+          height: 60,
+          child: Center(
+            child: Text('noData'.tr, style: TextStyle(color: UIConfig.galleryCardTextColor(context))),
+          ),
+        );
+      case LoadingState.success:
+      case LoadingState.idle:
+        return SizedBox(
+          height: 220,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.zero,
+            itemCount: state.relatedGallerys.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, index) => _buildRelatedCard(context, state.relatedGallerys[index]),
+          ).enableMouseDrag(withScrollBar: false),
+        );
+    }
+  }
+
+  Widget _buildRelatedCard(BuildContext context, dynamic gallery) {
+    return SizedBox(
+      width: 120,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => toRoute(
+          Routes.details,
+          arguments: DetailsPageArgument(galleryUrl: gallery.galleryUrl, gallery: gallery),
+          preventDuplicates: false,
+        ),
+        onLongPress: () {
+          tabManagerService.addGalleryTab(gallery);
+          toast('tabAdded'.tr);
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: EHImage(
+                galleryImage: gallery.cover,
+                containerColor: UIConfig.galleryCardBackGroundColor(context),
+                containerHeight: 160,
+                containerWidth: 120,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              gallery.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, height: 1.2),
+            ),
+          ],
+        ),
       ),
     );
   }

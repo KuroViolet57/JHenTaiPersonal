@@ -106,6 +106,7 @@ class DetailsPageLogic extends GetxController with LoginRequiredMixin, Scroll2To
   static const String thumbnailId = 'thumbnailId';
   static const String loadingStateId = 'fullPageLoadingStateId';
   static const String loadingThumbnailsStateId = 'loadingThumbnailsStateId';
+  static const String relatedId = 'relatedId';
 
   /// there may be more than one DetailsPages in route stack at same time, eg: tap a link in a comment.
   /// use this param as a 'tag' to get target [DetailsPageLogic] and [DetailsPageState].
@@ -235,6 +236,8 @@ class DetailsPageLogic extends GetxController with LoginRequiredMixin, Scroll2To
 
     state.loadingState = LoadingState.success;
     updateSafely(_judgeUpdateIds());
+
+    loadRelated();
 
     SchedulerBinding.instance.scheduleTask(
       () => historyService.record(galleryDetail2GalleryHistoryModel(state.galleryDetails!)),
@@ -866,6 +869,71 @@ class DetailsPageLogic extends GetxController with LoginRequiredMixin, Scroll2To
     }
 
     updateGlobalGalleryStatus();
+  }
+
+  /// Picks the most specific tag namespace we have and runs a gallery search
+  /// to surface related works. Falls back through artist > parody > group >
+  /// character > the first non-misc tag. Result is stored on the state; the
+  /// view rebuilds via [relatedId].
+  Future<void> loadRelated() async {
+    if (state.galleryDetails == null) return;
+    if (state.relatedLoadingState == LoadingState.loading) return;
+
+    final keyword = _pickRelatedKeyword();
+    if (keyword == null) {
+      state.relatedLoadingState = LoadingState.noData;
+      updateSafely([relatedId]);
+      return;
+    }
+
+    state.relatedKeyword = keyword;
+    state.relatedLoadingState = LoadingState.loading;
+    updateSafely([relatedId]);
+
+    try {
+      final page = await ehRequest.requestGalleryPage(
+        searchConfig: SearchConfig(keyword: keyword),
+        parser: EHSpiderParser.galleryPage2GalleryPageInfo,
+      );
+
+      final int currentGid = state.galleryUrl.gid;
+      final filtered = page.gallerys.where((g) => g.gid != currentGid).take(20).toList();
+
+      await tagTranslationService.translateTagsIfNeeded(
+        LinkedHashMap<String, List<GalleryTag>>.fromEntries(filtered.expand((g) => g.tags.entries)),
+      );
+
+      state.relatedGallerys = filtered;
+      state.relatedLoadingState = filtered.isEmpty ? LoadingState.noData : LoadingState.success;
+    } catch (e, s) {
+      log.error('loadRelatedFailed', e, s);
+      state.relatedLoadingState = LoadingState.error;
+    }
+
+    updateSafely([relatedId]);
+  }
+
+  String? _pickRelatedKeyword() {
+    final tags = state.galleryDetails?.tags;
+    if (tags == null || tags.isEmpty) return null;
+
+    String? pick(String namespace) {
+      final list = tags[namespace];
+      if (list == null || list.isEmpty) return null;
+      return '$namespace:"${list.first.tagData.key}\$"';
+    }
+
+    for (final ns in ['artist', 'parody', 'group', 'character']) {
+      final k = pick(ns);
+      if (k != null) return k;
+    }
+
+    for (final entry in tags.entries) {
+      if (entry.value.isEmpty) continue;
+      if (entry.key == 'language' || entry.key == 'reclass' || entry.key == 'misc') continue;
+      return '${entry.key}:"${entry.value.first.tagData.key}\$"';
+    }
+    return null;
   }
 
   void showTagDialog(GalleryTag tag) {

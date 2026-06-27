@@ -30,5 +30,10 @@ class DetailsPageState with Scroll2TopStateMixin {
   LoadingState favoriteState = LoadingState.idle;
   LoadingState ratingState = LoadingState.idle;
 
+  /// related-galleries strip
+  List<Gallery> relatedGallerys = [];
+  LoadingState relatedLoadingState = LoadingState.idle;
+  String? relatedKeyword;
+
   String? errorMessage;
 }
