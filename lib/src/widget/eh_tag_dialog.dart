@@ -8,8 +8,11 @@ import 'package:jhentai/src/exception/eh_site_exception.dart';
 import 'package:jhentai/src/extension/dio_exception_extension.dart';
 import 'package:jhentai/src/extension/widget_extension.dart';
 import 'package:jhentai/src/mixin/login_required_logic_mixin.dart';
+import 'package:jhentai/src/model/search_config.dart';
 import 'package:jhentai/src/routes/routes.dart';
+import 'package:jhentai/src/service/tab_manager_service.dart';
 import 'package:jhentai/src/setting/my_tags_setting.dart';
+import 'package:jhentai/src/utils/search_util.dart';
 import 'package:jhentai/src/setting/preference_setting.dart';
 import 'package:jhentai/src/utils/eh_spider_parser.dart';
 import 'package:jhentai/src/utils/route_util.dart';
@@ -83,6 +86,7 @@ class _EHTagDialogState extends State<EHTagDialog> with LoginRequiredMixin {
             _buildVoteDownButton(),
             _buildWatchTagButton(),
             _buildHideTagButton(),
+            _buildOpenInNewTabButton(),
             if (userSetting.hasLoggedIn()) _buildGoToTagSetsButton(),
           ],
         ).marginOnly(top: 12),
@@ -172,6 +176,31 @@ class _EHTagDialogState extends State<EHTagDialog> with LoginRequiredMixin {
       onTap: (bool liked) => liked ? Future.value(true) : handleAddWatchedTag(false, useDefault: preferenceSetting.enableDefaultTagSet.isTrue),
       onLongPress:
           preferenceSetting.enableDefaultTagSet.isFalse ? null : (bool liked) => liked ? Future.value(true) : handleAddWatchedTag(false, useDefault: false),
+    );
+  }
+
+  Widget _buildOpenInNewTabButton() {
+    return LikeButton(
+      likeBuilder: (_) => Icon(
+        Icons.tab,
+        size: UIConfig.tagDialogButtonSize,
+        color: UIConfig.tagDialogButtonColor(context),
+      ),
+      onTap: (_) async {
+        final keyword = '${widget.tagData.namespace}:"${widget.tagData.key}\$"';
+        final displayTitle = widget.tagData.tagName?.isNotEmpty == true
+            ? '${widget.tagData.namespace}: ${widget.tagData.tagName}'
+            : '${widget.tagData.namespace}: ${widget.tagData.key}';
+        tabManagerService.addSearchTab(
+          keyword: keyword,
+          config: SearchConfig(keyword: keyword),
+          displayTitle: displayTitle,
+        );
+        backRoute();
+        toast('tabAdded'.tr);
+        newSearch(keyword: keyword, forceNewRoute: true);
+        return null;
+      },
     );
   }
 
