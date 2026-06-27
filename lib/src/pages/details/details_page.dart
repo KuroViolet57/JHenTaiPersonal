@@ -35,6 +35,7 @@ import '../../mixin/scroll_to_top_state_mixin.dart';
 import '../../model/search_config.dart';
 import '../../service/gallery_download_service.dart';
 import '../../service/tab_manager_service.dart';
+import '../../widget/tab_manager_drawer.dart';
 import '../../setting/preference_setting.dart';
 import '../../setting/style_setting.dart';
 import '../../utils/date_util.dart';
@@ -73,6 +74,9 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
         appBar: buildAppBar(context),
         body: buildBody(context),
         floatingActionButton: buildFloatingActionButton(),
+        drawerEdgeDragWidth: preferenceSetting.drawerGestureEdgeWidth.value.toDouble(),
+        endDrawer: const Drawer(width: 300, child: TabManagerDrawer()),
+        endDrawerEnableOpenDragGesture: preferenceSetting.enableQuickSearchDrawerGesture.isTrue,
       ),
     );
   }
@@ -86,6 +90,13 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
         builder: (_) => Text(logic.mainTitleText.breakWord, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
       ),
       actions: [
+        Builder(
+          builder: (innerContext) => IconButton(
+            tooltip: 'tabs'.tr,
+            icon: const Icon(Icons.tab),
+            onPressed: () => Scaffold.of(innerContext).openEndDrawer(),
+          ),
+        ),
         _buildMenuButton(context),
       ],
     );

@@ -8,10 +8,10 @@ import 'package:jhentai/src/setting/preference_setting.dart';
 import 'package:jhentai/src/utils/route_util.dart';
 import 'package:jhentai/src/utils/uuid_util.dart';
 
+import '../../../widget/tab_manager_drawer.dart';
 import '../../base/base_page.dart';
 import '../mixin/search_page_mixin.dart';
 import '../mixin/search_page_state_mixin.dart';
-import '../quick_search/quick_search_page.dart';
 
 class SearchPageMobileV2 extends BasePage<SearchPageMobileV2Logic, SearchPageMobileV2State>
     with SearchPageMixin<SearchPageMobileV2Logic, SearchPageMobileV2State> {
@@ -39,7 +39,7 @@ class SearchPageMobileV2 extends BasePage<SearchPageMobileV2Logic, SearchPageMob
           key: scaffoldKey,
           appBar: buildAppBar(context),
           drawerEdgeDragWidth: preferenceSetting.drawerGestureEdgeWidth.value.toDouble(),
-          endDrawer: Drawer(width: 278, child: QuickSearchPage()),
+          endDrawer: const Drawer(width: 300, child: TabManagerDrawer()),
           endDrawerEnableOpenDragGesture: preferenceSetting.enableQuickSearchDrawerGesture.isTrue,
           body: SafeArea(child: buildBody(context)),
           floatingActionButton: buildFloatingActionButton(),
