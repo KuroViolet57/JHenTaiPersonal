@@ -41,6 +41,7 @@ import '../../setting/style_setting.dart';
 import '../../utils/date_util.dart';
 import '../../utils/route_util.dart';
 import '../../utils/search_util.dart';
+import '../../utils/toast_util.dart';
 import '../../utils/string_uril.dart';
 import '../../widget/eh_gallery_category_tag.dart';
 import 'details_page_logic.dart';
@@ -1312,7 +1313,7 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
                 config: SearchConfig(keyword: keyword),
                 displayTitle: displayTitle,
               );
-              newSearch(keyword: keyword, forceNewRoute: true);
+              toast('tabAdded'.tr);
             },
             onSecondaryTap: logic.showTagDialog,
             onLongPress: logic.showTagDialog,

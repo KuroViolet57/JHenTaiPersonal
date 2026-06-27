@@ -17,7 +17,7 @@ import '../consts/locale_consts.dart';
 import '../model/search_config.dart';
 import '../service/tab_manager_service.dart';
 import '../utils/date_util.dart';
-import '../utils/search_util.dart';
+import '../utils/toast_util.dart';
 import 'eh_image.dart';
 import 'eh_tag.dart';
 import 'eh_gallery_category_tag.dart';
@@ -304,7 +304,7 @@ class EHGalleryListCard extends StatelessWidget {
       config: SearchConfig(keyword: keyword),
       displayTitle: displayTitle,
     );
-    newSearch(keyword: keyword, forceNewRoute: true);
+    toast('tabAdded'.tr);
   }
 
   Text _buildTime(BuildContext context) {

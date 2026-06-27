@@ -12,7 +12,6 @@ import 'package:jhentai/src/model/search_config.dart';
 import 'package:jhentai/src/routes/routes.dart';
 import 'package:jhentai/src/service/tab_manager_service.dart';
 import 'package:jhentai/src/setting/my_tags_setting.dart';
-import 'package:jhentai/src/utils/search_util.dart';
 import 'package:jhentai/src/setting/preference_setting.dart';
 import 'package:jhentai/src/utils/eh_spider_parser.dart';
 import 'package:jhentai/src/utils/route_util.dart';
@@ -198,7 +197,6 @@ class _EHTagDialogState extends State<EHTagDialog> with LoginRequiredMixin {
         );
         backRoute();
         toast('tabAdded'.tr);
-        newSearch(keyword: keyword, forceNewRoute: true);
         return null;
       },
     );

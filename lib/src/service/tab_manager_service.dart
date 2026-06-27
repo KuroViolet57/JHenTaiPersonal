@@ -49,7 +49,6 @@ class TabManagerService extends GetxController with JHLifeCircleBeanWithConfigSt
         } catch (_) {}
       }
     }
-    _sortByRecency();
   }
 
   @override
@@ -78,11 +77,12 @@ class TabManagerService extends GetxController with JHLifeCircleBeanWithConfigSt
   }
 
   /// Add or refresh a gallery tab. Returns the record (existing or new).
+  /// Order is insertion-order (newest first); existing tabs never reshuffle.
   TabRecord addGalleryTab(Gallery gallery) {
     final existing = findGalleryTab(gallery.galleryUrl.url);
     if (existing != null) {
       existing.title = gallery.title;
-      _touch(existing);
+      existing.lastAccessedMs = DateTime.now().millisecondsSinceEpoch;
       _persist();
       return existing;
     }
@@ -121,7 +121,7 @@ class TabManagerService extends GetxController with JHLifeCircleBeanWithConfigSt
   }
 
   void touch(TabRecord record) {
-    _touch(record);
+    record.lastAccessedMs = DateTime.now().millisecondsSinceEpoch;
     _persist();
   }
 
@@ -135,16 +135,6 @@ class TabManagerService extends GetxController with JHLifeCircleBeanWithConfigSt
     _persist();
   }
 
-  /// Marks the given record as just-accessed and resorts the list.
-  void _touch(TabRecord record) {
-    record.lastAccessedMs = DateTime.now().millisecondsSinceEpoch;
-    _sortByRecency();
-  }
-
-  void _sortByRecency() {
-    _records.sort((a, b) => b.lastAccessedMs.compareTo(a.lastAccessedMs));
-  }
-
   void _enforceHardLimit() {
     if (_records.length > hardLimit) {
       _records.removeRange(hardLimit, _records.length);
@@ -156,9 +146,13 @@ class TabManagerService extends GetxController with JHLifeCircleBeanWithConfigSt
     saveBeanConfig();
   }
 
-  /// True iff this tab is within the warm window of [warmLimit] most-recent tabs.
+  /// True iff this tab is within the warm window of [warmLimit] most-recently
+  /// accessed tabs. The visible list order is insertion-order; warmness is
+  /// computed independently from `lastAccessedMs` so older entries can stay
+  /// in place but still render as suspended.
   bool isWarm(TabRecord record) {
-    final idx = _records.indexWhere((r) => r.id == record.id);
+    final byRecency = [..._records]..sort((a, b) => b.lastAccessedMs.compareTo(a.lastAccessedMs));
+    final idx = byRecency.indexWhere((r) => r.id == record.id);
     return idx >= 0 && idx < warmLimit;
   }
 }
