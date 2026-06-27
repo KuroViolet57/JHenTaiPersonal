@@ -38,6 +38,7 @@ enum ConfigEnum {
   searchHistory('searchHistory'),
   myTagsSetting('MyTagsSetting'),
   builtInBlockedUser('builtInBlockedUser'),
+  tabManagerRecords('tabManagerRecords'),
 
   /// page config
   downloadPageBodyType('downloadPageGalleryType'),

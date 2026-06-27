@@ -7,8 +7,8 @@ import 'package:jhentai/src/pages/download/download_base_page.dart';
 import 'package:jhentai/src/pages/layout/mobile_v2/mobile_layout_page_v2_logic.dart';
 import 'package:jhentai/src/pages/layout/mobile_v2/mobile_layout_page_v2_state.dart';
 import 'package:jhentai/src/pages/layout/mobile_v2/notification/tap_menu_button_notification.dart';
-import 'package:jhentai/src/pages/search/quick_search/quick_search_page.dart';
 import 'package:jhentai/src/pages/setting/setting_page.dart';
+import 'package:jhentai/src/widget/tab_manager_drawer.dart';
 import 'package:jhentai/src/routes/routes.dart';
 import 'package:jhentai/src/setting/user_setting.dart';
 import 'package:jhentai/src/utils/route_util.dart';
@@ -82,7 +82,7 @@ class MobileLayoutPageV2 extends StatelessWidget {
   }
 
   Widget buildRightDrawer() {
-    return Drawer(width: 278, child: QuickSearchPage());
+    return const Drawer(width: 300, child: TabManagerDrawer());
   }
 
   Widget buildBottomNavigationBar(BuildContext context) {

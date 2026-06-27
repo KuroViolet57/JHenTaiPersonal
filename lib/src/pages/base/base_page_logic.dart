@@ -22,6 +22,7 @@ import '../../model/gallery.dart';
 import '../../network/eh_request.dart';
 import '../../routes/routes.dart';
 import '../../service/local_block_rule_service.dart';
+import '../../service/tab_manager_service.dart';
 import '../../service/tag_translation_service.dart';
 import '../../setting/user_setting.dart';
 import '../../utils/eh_spider_parser.dart';
@@ -388,7 +389,10 @@ abstract class BasePageLogic extends GetxController with Scroll2TopLogicMixin {
     );
   }
 
-  void handleLongPressCard(BuildContext context, Gallery gallery) async {}
+  void handleLongPressCard(BuildContext context, Gallery gallery) async {
+    tabManagerService.addGalleryTab(gallery);
+    toast('tabAdded'.tr);
+  }
 
   void handleSecondaryTapCard(BuildContext context, Gallery gallery) async {}
 

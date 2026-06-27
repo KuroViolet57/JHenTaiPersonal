@@ -92,6 +92,14 @@ class en_US {
       /// gallery card
       'filtered': 'Filtered',
 
+      /// tabs
+      'tabs': 'Tabs',
+      'openInNewTab': 'Open in new tab',
+      'tabAdded': 'Added to tabs',
+      'noTabs': 'No open tabs',
+      'clearAllTabs': 'Close all tabs',
+      'tabClosed': 'Tab closed',
+
       /// gallery page
       'getGallerysFailed': "Get Gallerys Failed",
       'refreshGalleryFailed': 'Refresh Gallery Failed',

@@ -14,7 +14,10 @@ import 'package:jhentai/src/setting/style_setting.dart';
 import 'package:waterfall_flow/waterfall_flow.dart';
 
 import '../consts/locale_consts.dart';
+import '../model/search_config.dart';
+import '../service/tab_manager_service.dart';
 import '../utils/date_util.dart';
+import '../utils/search_util.dart';
 import 'eh_image.dart';
 import 'eh_tag.dart';
 import 'eh_gallery_category_tag.dart';
@@ -188,7 +191,10 @@ class EHGalleryListCard extends StatelessWidget {
           crossAxisSpacing: 4,
         ),
         itemCount: mergedList.length,
-        itemBuilder: (_, int index) => EHTag(tag: mergedList[index]),
+        itemBuilder: (_, int index) => EHTag(
+          tag: mergedList[index],
+          onTap: _openTagInNewTab,
+        ),
       ).enableMouseDrag(withScrollBar: false),
     );
   }
@@ -286,6 +292,19 @@ class EHGalleryListCard extends StatelessWidget {
       LocaleConsts.language2Abbreviation[gallery.language] ?? '',
       style: TextStyle(fontSize: UIConfig.galleryCardTextSize, color: UIConfig.galleryCardTextColor(context)),
     );
+  }
+
+  void _openTagInNewTab(GalleryTag tag) {
+    final keyword = '${tag.tagData.namespace}:"${tag.tagData.key}\$"';
+    final displayTitle = tag.tagData.tagName?.isNotEmpty == true
+        ? '${tag.tagData.namespace}: ${tag.tagData.tagName}'
+        : '${tag.tagData.namespace}: ${tag.tagData.key}';
+    tabManagerService.addSearchTab(
+      keyword: keyword,
+      config: SearchConfig(keyword: keyword),
+      displayTitle: displayTitle,
+    );
+    newSearch(keyword: keyword, forceNewRoute: true);
   }
 
   Text _buildTime(BuildContext context) {

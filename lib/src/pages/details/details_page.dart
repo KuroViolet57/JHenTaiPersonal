@@ -32,7 +32,9 @@ import 'package:jhentai/src/widget/loading_state_indicator.dart';
 import '../../database/database.dart';
 import '../../mixin/scroll_to_top_logic_mixin.dart';
 import '../../mixin/scroll_to_top_state_mixin.dart';
+import '../../model/search_config.dart';
 import '../../service/gallery_download_service.dart';
+import '../../service/tab_manager_service.dart';
 import '../../setting/preference_setting.dart';
 import '../../setting/style_setting.dart';
 import '../../utils/date_util.dart';
@@ -1289,7 +1291,18 @@ class DetailsPage extends StatelessWidget with Scroll2TopPageMixin {
         .map(
           (tag) => EHTag(
             tag: tag,
-            onTap: (tag) => newSearch(keyword: '${tag.tagData.namespace}:"${tag.tagData.key}\$"', forceNewRoute: true),
+            onTap: (tag) {
+              final keyword = '${tag.tagData.namespace}:"${tag.tagData.key}\$"';
+              final displayTitle = tag.tagData.tagName?.isNotEmpty == true
+                  ? '${tag.tagData.namespace}: ${tag.tagData.tagName}'
+                  : '${tag.tagData.namespace}: ${tag.tagData.key}';
+              tabManagerService.addSearchTab(
+                keyword: keyword,
+                config: SearchConfig(keyword: keyword),
+                displayTitle: displayTitle,
+              );
+              newSearch(keyword: keyword, forceNewRoute: true);
+            },
             onSecondaryTap: logic.showTagDialog,
             onLongPress: logic.showTagDialog,
             showTagStatus: preferenceSetting.showGalleryTagVoteStatus.isTrue,

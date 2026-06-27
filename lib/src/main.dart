@@ -24,6 +24,7 @@ import 'package:jhentai/src/service/schedule_service.dart';
 import 'package:jhentai/src/service/search_history_service.dart';
 import 'package:jhentai/src/service/storage_service.dart';
 import 'package:jhentai/src/service/super_resolution_service.dart';
+import 'package:jhentai/src/service/tab_manager_service.dart';
 import 'package:jhentai/src/service/tag_search_order_service.dart';
 import 'package:jhentai/src/service/tag_translation_service.dart';
 import 'package:jhentai/src/service/volume_service.dart';
@@ -76,6 +77,7 @@ List<JHLifeCircleBean> lifeCircleBeans = [
   searchHistoryService,
   storageService,
   superResolutionService,
+  tabManagerService,
   tagTranslationService,
   tagSearchOrderOptimizationService,
   volumeService,
