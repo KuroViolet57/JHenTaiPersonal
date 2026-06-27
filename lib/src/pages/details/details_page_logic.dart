@@ -15,6 +15,7 @@ import 'package:jhentai/src/extension/dio_exception_extension.dart';
 import 'package:jhentai/src/extension/get_logic_extension.dart';
 import 'package:jhentai/src/mixin/login_required_logic_mixin.dart';
 import 'package:jhentai/src/model/gallery.dart';
+import 'package:jhentai/src/model/gallery_page.dart';
 import 'package:jhentai/src/model/gallery_comment.dart';
 import 'package:jhentai/src/model/gallery_tag.dart';
 import 'package:jhentai/src/model/gallery_thumbnail.dart';
@@ -871,40 +872,73 @@ class DetailsPageLogic extends GetxController with LoginRequiredMixin, Scroll2To
     updateGlobalGalleryStatus();
   }
 
-  /// Picks the most specific tag namespace we have and runs a gallery search
-  /// to surface related works. Falls back through artist > parody > group >
-  /// character > the first non-misc tag. Result is stored on the state; the
-  /// view rebuilds via [relatedId].
+  /// Surfaces similar works rather than "everything by this artist".
+  ///
+  /// Strategy:
+  ///   1. Pick up to [_relatedSeedCount] distinctive seed tags from the source
+  ///      gallery - prefer character/parody/group, then female/male - skipping
+  ///      artist (we explicitly want diversity), language, reclass and misc.
+  ///   2. Fire one search per seed in parallel.
+  ///   3. Pool the candidates, drop the source gid and obvious duplicates.
+  ///   4. Score each candidate by weighted overlap with the source's full tag
+  ///      set: character/parody +3, group +2, female/male +1.5, anything else
+  ///      +0.5. Same-artist galleries get a -2 penalty so the artist's own
+  ///      catalog stops dominating the strip.
+  ///   5. Sort by score, slice to [_relatedDisplayCount], render.
   Future<void> loadRelated() async {
     if (state.galleryDetails == null) return;
     if (state.relatedLoadingState == LoadingState.loading) return;
 
-    final keyword = _pickRelatedKeyword();
-    if (keyword == null) {
+    final seeds = _pickRelatedSeeds();
+    if (seeds.isEmpty) {
       state.relatedLoadingState = LoadingState.noData;
       updateSafely([relatedId]);
       return;
     }
 
-    state.relatedKeyword = keyword;
+    state.relatedKeyword = seeds.map((s) => s.label).join(' · ');
     state.relatedLoadingState = LoadingState.loading;
     updateSafely([relatedId]);
 
     try {
-      final page = await ehRequest.requestGalleryPage(
-        searchConfig: SearchConfig(keyword: keyword),
-        parser: EHSpiderParser.galleryPage2GalleryPageInfo,
-      );
+      final pages = await Future.wait(seeds.map(
+        (seed) => ehRequest
+            .requestGalleryPage(
+              searchConfig: SearchConfig(keyword: seed.queryKeyword),
+              parser: EHSpiderParser.galleryPage2GalleryPageInfo,
+            )
+            .catchError((Object e, StackTrace s) {
+              log.error('related-seed-failed: ${seed.queryKeyword}', e, s);
+              return _emptyGalleryPageInfo;
+            }),
+      ));
 
       final int currentGid = state.galleryUrl.gid;
-      final filtered = page.gallerys.where((g) => g.gid != currentGid).take(20).toList();
+      final Map<int, Gallery> pool = {};
+      for (final page in pages) {
+        for (final g in page.gallerys) {
+          if (g.gid == currentGid) continue;
+          pool.putIfAbsent(g.gid, () => g);
+        }
+      }
+
+      final sourceTagKeys = _flattenTagKeys(state.galleryDetails!.tags);
+      final sourceArtists = _namespaceKeys(state.galleryDetails!.tags, 'artist');
+
+      final scored = pool.values
+          .map((g) => (gallery: g, score: _scoreCandidate(g, sourceTagKeys, sourceArtists)))
+          .where((e) => e.score > 0)
+          .toList()
+        ..sort((a, b) => b.score.compareTo(a.score));
+
+      final picked = scored.take(_relatedDisplayCount).map((e) => e.gallery).toList();
 
       await tagTranslationService.translateTagsIfNeeded(
-        LinkedHashMap<String, List<GalleryTag>>.fromEntries(filtered.expand((g) => g.tags.entries)),
+        LinkedHashMap<String, List<GalleryTag>>.fromEntries(picked.expand((g) => g.tags.entries)),
       );
 
-      state.relatedGallerys = filtered;
-      state.relatedLoadingState = filtered.isEmpty ? LoadingState.noData : LoadingState.success;
+      state.relatedGallerys = picked;
+      state.relatedLoadingState = picked.isEmpty ? LoadingState.noData : LoadingState.success;
     } catch (e, s) {
       log.error('loadRelatedFailed', e, s);
       state.relatedLoadingState = LoadingState.error;
@@ -913,27 +947,92 @@ class DetailsPageLogic extends GetxController with LoginRequiredMixin, Scroll2To
     updateSafely([relatedId]);
   }
 
-  String? _pickRelatedKeyword() {
+  static const int _relatedSeedCount = 3;
+  static const int _relatedDisplayCount = 20;
+
+  static const Map<String, double> _scoreWeights = {
+    'character': 3.0,
+    'parody': 3.0,
+    'group': 2.0,
+    'female': 1.5,
+    'male': 1.5,
+  };
+  static const double _defaultTagWeight = 0.5;
+  static const double _sameArtistPenalty = 2.0;
+
+  GalleryPageInfo get _emptyGalleryPageInfo => GalleryPageInfo(gallerys: const []);
+
+  /// Returns the set of namespaced tag keys (e.g. {"female:lolicon", "parody:original"}).
+  Set<String> _flattenTagKeys(LinkedHashMap<String, List<GalleryTag>> tags) {
+    final set = <String>{};
+    tags.forEach((ns, list) {
+      for (final t in list) {
+        set.add('$ns:${t.tagData.key}');
+      }
+    });
+    return set;
+  }
+
+  Set<String> _namespaceKeys(LinkedHashMap<String, List<GalleryTag>> tags, String namespace) {
+    final list = tags[namespace];
+    if (list == null) return const {};
+    return list.map((t) => t.tagData.key).toSet();
+  }
+
+  double _scoreCandidate(Gallery candidate, Set<String> sourceTagKeys, Set<String> sourceArtists) {
+    double score = 0;
+    candidate.tags.forEach((ns, list) {
+      final weight = _scoreWeights[ns] ?? _defaultTagWeight;
+      for (final t in list) {
+        if (sourceTagKeys.contains('$ns:${t.tagData.key}')) {
+          score += weight;
+        }
+      }
+    });
+
+    final candArtists = candidate.tags['artist'];
+    if (candArtists != null && candArtists.any((a) => sourceArtists.contains(a.tagData.key))) {
+      score -= _sameArtistPenalty;
+    }
+    return score;
+  }
+
+  List<_RelatedSeed> _pickRelatedSeeds() {
     final tags = state.galleryDetails?.tags;
-    if (tags == null || tags.isEmpty) return null;
+    if (tags == null || tags.isEmpty) return const [];
 
-    String? pick(String namespace) {
+    final seeds = <_RelatedSeed>[];
+    void addFrom(String namespace, {int take = 1}) {
       final list = tags[namespace];
-      if (list == null || list.isEmpty) return null;
-      return '$namespace:"${list.first.tagData.key}\$"';
+      if (list == null) return;
+      for (final t in list.take(take)) {
+        if (seeds.length >= _relatedSeedCount) return;
+        if (seeds.any((s) => s.namespace == namespace && s.key == t.tagData.key)) continue;
+        seeds.add(_RelatedSeed(
+          namespace: namespace,
+          key: t.tagData.key,
+          label: t.tagData.tagName?.isNotEmpty == true
+              ? '$namespace: ${t.tagData.tagName}'
+              : '$namespace: ${t.tagData.key}',
+        ));
+      }
     }
 
-    for (final ns in ['artist', 'parody', 'group', 'character']) {
-      final k = pick(ns);
-      if (k != null) return k;
-    }
+    addFrom('character', take: 2);
+    addFrom('parody', take: 1);
+    addFrom('group', take: 1);
+    addFrom('female', take: 2);
+    addFrom('male', take: 2);
 
-    for (final entry in tags.entries) {
-      if (entry.value.isEmpty) continue;
-      if (entry.key == 'language' || entry.key == 'reclass' || entry.key == 'misc') continue;
-      return '${entry.key}:"${entry.value.first.tagData.key}\$"';
+    if (seeds.isEmpty) {
+      for (final entry in tags.entries) {
+        if (entry.value.isEmpty) continue;
+        if (entry.key == 'language' || entry.key == 'reclass' || entry.key == 'misc' || entry.key == 'artist') continue;
+        addFrom(entry.key, take: 1);
+        if (seeds.length >= _relatedSeedCount) break;
+      }
     }
-    return null;
+    return seeds;
   }
 
   void showTagDialog(GalleryTag tag) {
@@ -1284,4 +1383,12 @@ class DetailsPageLogic extends GetxController with LoginRequiredMixin, Scroll2To
   void removeCache() {
     ehRequest.removeCacheByGalleryUrlAndPage(state.galleryUrl.url, 0);
   }
+}
+
+class _RelatedSeed {
+  final String namespace;
+  final String key;
+  final String label;
+  const _RelatedSeed({required this.namespace, required this.key, required this.label});
+  String get queryKeyword => '$namespace:"$key\$"';
 }
